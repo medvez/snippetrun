@@ -11,7 +11,6 @@ class SnippetRun:
         self.data_folder_path = ''
         self.snippet = []
         self.devices = []
-        self.device_ip = ''
 
     def get_credentials(self):
         self.data_folder_path = input('Full path to data files folder: ')
@@ -57,5 +56,5 @@ class SnippetRun:
 
 
 if __name__ == '__main__':
-    snippetrun = SnippetRun()
-    snippetrun.run()
+    snippet_run = SnippetRun()
+    snippet_run.run()
