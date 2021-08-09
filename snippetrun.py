@@ -31,18 +31,18 @@ class SnippetRun:
                     self.devices.append(line[:-1])
 
     def ssh_operation(self, device_ip):
-        client = paramiko.SSHClient()
-        client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        ssh_client = paramiko.client.SSHClient()
+        ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         print('Connecting to', device_ip)
-        client.connect(hostname=device_ip, username=self.username, password=self.password)
+        ssh_client.connect(hostname=device_ip, username=self.username, password=self.password)
         print('Connected!')
-        ssh_session = client.invoke_shell()
+        ssh_session = ssh_client.invoke_shell()
         time.sleep(1)
         for command in self.snippet:
             ssh_session.send(command)
             time.sleep(1)
         time.sleep(4)
-        client.close()
+        ssh_client.close()
 
     def configure_devices(self):
         for device_ip in self.devices:
