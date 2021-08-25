@@ -21,28 +21,35 @@ class SnippetRun:
         _snippet_full_path = os.path.join(self.data_folder_path, 'snippet.txt')
         with open(file=_snippet_full_path, mode='r', encoding='utf8') as file_content:
             for line in file_content:
-                self.snippet.append(line)
+                if line.endswith('\n'):
+                    self.snippet.append(line)
+                elif line:
+                    self.snippet.append(line + '\n')
 
     def load_devices(self):
         _devices_full_path = os.path.join(self.data_folder_path, 'devices.txt')
         with open(file=_devices_full_path, mode='r', encoding='utf8') as file_content:
             for line in file_content:
+                line = line.splitlines()[0]
                 if line:
-                    self.devices.append(line[:-1])
+                    self.devices.append(line)
 
     def ssh_operation(self, device_ip):
         ssh_client = paramiko.client.SSHClient()
         ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        print('Connecting to', device_ip)
-        ssh_client.connect(hostname=device_ip, username=self.username, password=self.password)
-        print('Connected!')
-        ssh_session = ssh_client.invoke_shell()
-        time.sleep(1)
-        for command in self.snippet:
-            ssh_session.send(command)
-            time.sleep(1)
-        time.sleep(4)
-        ssh_client.close()
+        print(f'Connecting to {device_ip}...')
+        try:
+            ssh_client.connect(hostname=device_ip, username=self.username, password=self.password)
+        except Exception as exc:
+            print(exc)
+        else:
+            print(f'Connected to {device_ip}!')
+            ssh_session = ssh_client.invoke_shell()
+            for command in self.snippet:
+                ssh_session.send(command)
+                time.sleep(1)
+            time.sleep(2)
+            ssh_client.close()
 
     def configure_devices(self):
         for device_ip in self.devices:
