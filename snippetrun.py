@@ -43,7 +43,7 @@ class SnippetRun:
         except Exception as exc:
             print(exc)
         else:
-            print(f'Connected to {device_ip}!')
+            print('Connected!')
             ssh_session = ssh_client.invoke_shell()
             for command in self.snippet:
                 ssh_session.send(command)
