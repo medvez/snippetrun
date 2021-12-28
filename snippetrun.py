@@ -1,7 +1,19 @@
 import paramiko
 import getpass
 import time
-import os.path
+import os
+
+
+def time_tracker(function):
+    def intermediate(*args, **kwargs):
+        start_time = time.time()
+        result = function(*args, **kwargs)
+        end_time = time.time()
+        run_time = end_time - start_time
+        print(f'Run time: {round(run_time, 1)} s')
+        return result
+
+    return intermediate
 
 
 class SnippetRun:
@@ -13,12 +25,12 @@ class SnippetRun:
         self.devices = []
 
     def get_credentials(self):
-        self.data_folder_path = input('Full path to data files folder: ')
         self.username = input('SSH username: ')
         self.password = getpass.getpass(prompt='SSH password: ')
 
     def load_snippet(self):
-        _snippet_full_path = os.path.join(self.data_folder_path, 'snippet.txt')
+        _norm_path = os.path.normpath('load_data/snippet.txt')
+        _snippet_full_path = os.path.join(os.path.split(os.path.abspath(__file__))[0], _norm_path)
         with open(file=_snippet_full_path, mode='r', encoding='utf8') as file_content:
             for line in file_content:
                 if line.endswith('\n'):
@@ -27,7 +39,8 @@ class SnippetRun:
                     self.snippet.append(line + '\n')
 
     def load_devices(self):
-        _devices_full_path = os.path.join(self.data_folder_path, 'devices.txt')
+        _norm_path = os.path.normpath('load_data/devices.txt')
+        _devices_full_path = os.path.join(os.path.split(os.path.abspath(__file__))[0], _norm_path)
         with open(file=_devices_full_path, mode='r', encoding='utf8') as file_content:
             for line in file_content:
                 line = line.splitlines()[0]
@@ -38,28 +51,28 @@ class SnippetRun:
         ssh_client = paramiko.client.SSHClient()
         ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         print(f'Connecting to {device_ip}...')
-        try:
-            ssh_client.connect(hostname=device_ip, username=self.username, password=self.password)
-        except Exception as exc:
-            print(exc)
-        else:
-            print('Connected!')
-            ssh_session = ssh_client.invoke_shell()
-            for command in self.snippet:
-                ssh_session.send(command)
-                time.sleep(1)
-            time.sleep(2)
-            ssh_client.close()
+        ssh_client.connect(hostname=device_ip, username=self.username, password=self.password)
+        print('Connected!')
+        ssh_session = ssh_client.invoke_shell()
+        for command in self.snippet:
+            ssh_session.send(command)
+            time.sleep(1)
+        time.sleep(2)
+        ssh_client.close()
 
     def configure_devices(self):
         for device_ip in self.devices:
             self.ssh_operation(device_ip)
 
+    @time_tracker
     def run(self):
         self.get_credentials()
-        self.load_snippet()
-        self.load_devices()
-        self.configure_devices()
+        try:
+            self.load_snippet()
+            self.load_devices()
+            self.configure_devices()
+        except Exception as exc:
+            print(exc)
 
 
 if __name__ == '__main__':
