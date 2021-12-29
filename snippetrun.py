@@ -2,6 +2,7 @@ import paramiko
 import getpass
 import time
 import os
+from threading import Thread
 
 
 def time_tracker(function):
@@ -16,11 +17,35 @@ def time_tracker(function):
     return intermediate
 
 
-class SnippetRun:
+class SnippetRun(Thread):
+    def __init__(self, ssh_user, ssh_password, device_ip, snippet, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.ssh_user = ssh_user
+        self.ssh_password = ssh_password
+        self.device_ip = device_ip
+        self.snippet = snippet
+
+    def ssh_operation(self):
+        ssh_client = paramiko.client.SSHClient()
+        ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        print(f'Connecting to {self.device_ip}...')
+        ssh_client.connect(hostname=self.device_ip, username=self.ssh_user, password=self.ssh_password)
+        print('Connected!')
+        ssh_session = ssh_client.invoke_shell()
+        for command in self.snippet:
+            ssh_session.send(command)
+            time.sleep(1)
+        time.sleep(2)
+        ssh_client.close()
+
+    def run(self):
+        self.ssh_operation()
+
+
+class DeviceController:
     def __init__(self):
         self.username = ''
         self.password = ''
-        self.data_folder_path = ''
         self.snippet = []
         self.devices = []
 
@@ -47,22 +72,17 @@ class SnippetRun:
                 if line:
                     self.devices.append(line)
 
-    def ssh_operation(self, device_ip):
-        ssh_client = paramiko.client.SSHClient()
-        ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        print(f'Connecting to {device_ip}...')
-        ssh_client.connect(hostname=device_ip, username=self.username, password=self.password)
-        print('Connected!')
-        ssh_session = ssh_client.invoke_shell()
-        for command in self.snippet:
-            ssh_session.send(command)
-            time.sleep(1)
-        time.sleep(2)
-        ssh_client.close()
-
     def configure_devices(self):
+        _runners = []
         for device_ip in self.devices:
-            self.ssh_operation(device_ip)
+            snippet_runner = SnippetRun(ssh_user=self.username,
+                                        ssh_password=self.password,
+                                        device_ip=device_ip,
+                                        snippet=self.snippet)
+            snippet_runner.start()
+            _runners.append(snippet_runner)
+        for runner in _runners:
+            runner.join()
 
     @time_tracker
     def run(self):
@@ -76,5 +96,5 @@ class SnippetRun:
 
 
 if __name__ == '__main__':
-    snippet_run = SnippetRun()
-    snippet_run.run()
+    controller = DeviceController()
+    controller.run()
