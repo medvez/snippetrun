@@ -28,9 +28,9 @@ class SnippetRun(Thread):
     def ssh_operation(self):
         ssh_client = paramiko.client.SSHClient()
         ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        print(f'Connecting to {self.device_ip}...')
+        # print(f'Connecting to {self.device_ip}...')
         ssh_client.connect(hostname=self.device_ip, username=self.ssh_user, password=self.ssh_password)
-        print('Connected!')
+        print(f'Connected to {self.device_ip}')
         ssh_session = ssh_client.invoke_shell()
         for command in self.snippet:
             ssh_session.send(command)
