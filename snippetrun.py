@@ -28,14 +28,15 @@ class SnippetRun(Thread):
     def ssh_operation(self):
         ssh_client = paramiko.client.SSHClient()
         ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        # print(f'Connecting to {self.device_ip}...')
-        ssh_client.connect(hostname=self.device_ip, username=self.ssh_user, password=self.ssh_password)
+        ssh_client.connect(hostname=self.device_ip,
+                           username=self.ssh_user,
+                           password=self.ssh_password)
         print(f'Connected to {self.device_ip}')
         ssh_session = ssh_client.invoke_shell()
         for command in self.snippet:
             ssh_session.send(command)
             time.sleep(1)
-        time.sleep(2)
+        time.sleep(1)
         ssh_client.close()
 
     def run(self):
@@ -48,6 +49,7 @@ class DeviceController:
         self.password = ''
         self.snippet = []
         self.devices = []
+        self.program_hosting_folder = os.path.split(os.path.abspath(__file__))[0]
 
     def get_credentials(self):
         self.username = input('SSH username: ')
@@ -55,7 +57,7 @@ class DeviceController:
 
     def load_snippet(self):
         _norm_path = os.path.normpath('load_data/snippet.txt')
-        _snippet_full_path = os.path.join(os.path.split(os.path.abspath(__file__))[0], _norm_path)
+        _snippet_full_path = os.path.join(self.program_hosting_folder, _norm_path)
         with open(file=_snippet_full_path, mode='r', encoding='utf8') as file_content:
             for line in file_content:
                 if line.endswith('\n'):
@@ -65,13 +67,14 @@ class DeviceController:
 
     def load_devices(self):
         _norm_path = os.path.normpath('load_data/devices.txt')
-        _devices_full_path = os.path.join(os.path.split(os.path.abspath(__file__))[0], _norm_path)
+        _devices_full_path = os.path.join(self.program_hosting_folder, _norm_path)
         with open(file=_devices_full_path, mode='r', encoding='utf8') as file_content:
             for line in file_content:
                 line = line.splitlines()[0]
                 if line:
                     self.devices.append(line)
 
+    @time_tracker
     def configure_devices(self):
         _runners = []
         for device_ip in self.devices:
@@ -84,7 +87,6 @@ class DeviceController:
         for runner in _runners:
             runner.join()
 
-    @time_tracker
     def run(self):
         self.get_credentials()
         try:
