@@ -3,7 +3,7 @@ import getpass
 import time
 import os
 from threading import Thread
-
+from pathlib import Path
 
 def time_tracker(function):
     def intermediate(*args, **kwargs):
@@ -49,15 +49,15 @@ class DeviceController:
         self.password = ''
         self.snippet = []
         self.devices = []
-        self.program_hosting_folder = os.path.split(os.path.abspath(__file__))[0]
+        self.program_hosting_folder = Path(__file__).parent.resolve()
 
     def get_credentials(self):
         self.username = input('SSH username: ')
         self.password = getpass.getpass(prompt='SSH password: ')
 
     def load_snippet(self):
-        _norm_path = os.path.normpath('load_data/snippet.txt')
-        _snippet_full_path = os.path.join(self.program_hosting_folder, _norm_path)
+        # _norm_path = os.path.normpath('data/snippet.txt')
+        _snippet_full_path = self.program_hosting_folder / 'data/snippet.txt'
         with open(file=_snippet_full_path, mode='r', encoding='utf8') as file_content:
             for line in file_content:
                 if line.endswith('\n'):
@@ -66,8 +66,8 @@ class DeviceController:
                     self.snippet.append(line + '\n')
 
     def load_devices(self):
-        _norm_path = os.path.normpath('load_data/devices.txt')
-        _devices_full_path = os.path.join(self.program_hosting_folder, _norm_path)
+        # _norm_path = os.path.normpath('data/devices.txt')
+        _devices_full_path = self.program_hosting_folder / 'data/devices.txt'
         with open(file=_devices_full_path, mode='r', encoding='utf8') as file_content:
             for line in file_content:
                 line = line.splitlines()[0]
@@ -97,6 +97,6 @@ class DeviceController:
             print(exc)
 
 
-if __name__ == '__main__':
-    controller = DeviceController()
-    controller.run()
+def main():
+    _controller = DeviceController()
+    _controller.run()
