@@ -1,9 +1,17 @@
-import paramiko
 import getpass
+import logging
+import paramiko
 import time
-import os
+# from pathlib import Path
 from threading import Thread
-from pathlib import Path
+
+logger = logging.getLogger('main')
+logger.setLevel(logging.DEBUG)
+log_handler = logging.FileHandler('snippetrun.log', 'w', 'utf-8')
+log_formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+log_handler.setFormatter(log_formatter)
+logger.addHandler(log_handler)
+
 
 def time_tracker(function):
     def intermediate(*args, **kwargs):
@@ -28,16 +36,22 @@ class SnippetRun(Thread):
     def ssh_operation(self):
         ssh_client = paramiko.client.SSHClient()
         ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        ssh_client.connect(hostname=self.device_ip,
-                           username=self.ssh_user,
-                           password=self.ssh_password)
-        print(f'Connected to {self.device_ip}')
-        ssh_session = ssh_client.invoke_shell()
-        for command in self.snippet:
-            ssh_session.send(command)
+        try:
+            ssh_client.connect(hostname=self.device_ip,
+                               username=self.ssh_user,
+                               password=self.ssh_password,
+                               allow_agent=False)
+        except Exception:
+            logger.exception(f'Can not connect to {self.device_ip}')
+        else:
+            print(f'Connected to {self.device_ip}')
+            logger.info(f'Connected to {self.device_ip}')
+            ssh_session = ssh_client.invoke_shell()
+            for command in self.snippet:
+                ssh_session.send(command)
+                time.sleep(1)
             time.sleep(1)
-        time.sleep(1)
-        ssh_client.close()
+            ssh_client.close()
 
     def run(self):
         self.ssh_operation()
@@ -49,15 +63,15 @@ class DeviceController:
         self.password = ''
         self.snippet = []
         self.devices = []
-        self.program_hosting_folder = Path(__file__).parent.resolve()
+        # self.program_hosting_folder = Path(__file__).parent.resolve()
 
     def get_credentials(self):
         self.username = input('SSH username: ')
         self.password = getpass.getpass(prompt='SSH password: ')
 
     def load_snippet(self):
-        # _norm_path = os.path.normpath('data/snippet.txt')
-        _snippet_full_path = self.program_hosting_folder / 'data/snippet.txt'
+        _snippet_full_path = 'snippet.txt'
+        # self.program_hosting_folder / 'data/snippet.txt'
         with open(file=_snippet_full_path, mode='r', encoding='utf8') as file_content:
             for line in file_content:
                 if line.endswith('\n'):
@@ -66,8 +80,8 @@ class DeviceController:
                     self.snippet.append(line + '\n')
 
     def load_devices(self):
-        # _norm_path = os.path.normpath('data/devices.txt')
-        _devices_full_path = self.program_hosting_folder / 'data/devices.txt'
+        _devices_full_path = 'devices.txt'
+        # self.program_hosting_folder / 'data/devices.txt'
         with open(file=_devices_full_path, mode='r', encoding='utf8') as file_content:
             for line in file_content:
                 line = line.splitlines()[0]
@@ -92,11 +106,13 @@ class DeviceController:
         try:
             self.load_snippet()
             self.load_devices()
+        except Exception:
+            print('Error! See log!')
+            logger.exception(f'Loading data error')
+        else:
             self.configure_devices()
-        except Exception as exc:
-            print(exc)
 
 
-def main():
-    _controller = DeviceController()
-    _controller.run()
+if __name__ == '__main__':
+    controller = DeviceController()
+    controller.run()
