@@ -1,16 +1,36 @@
 import getpass
-import logging
+import logging.config
 import paramiko
 import time
-# from pathlib import Path
+from pathlib import Path
 from threading import Thread
 
+
+log_config = {
+    'version': 1,
+    'formatters': {
+        'full': {
+            'format': '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        },
+    },
+    'handlers': {
+        'main_full_to_file': {
+            'class': 'logging.FileHandler',
+            'formatter': 'full',
+            'filename': 'snippetrun.log',
+            'encoding': 'utf-8',
+        },
+    },
+    'loggers': {
+        'main': {
+            'handlers': ['main_full_to_file'],
+            'level': 'DEBUG',
+        },
+    },
+}
+
+logging.config.dictConfig(log_config)
 logger = logging.getLogger('main')
-logger.setLevel(logging.DEBUG)
-log_handler = logging.FileHandler('snippetrun.log', 'w', 'utf-8')
-log_formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-log_handler.setFormatter(log_formatter)
-logger.addHandler(log_handler)
 
 
 def time_tracker(function):
@@ -63,15 +83,14 @@ class DeviceController:
         self.password = ''
         self.snippet = []
         self.devices = []
-        # self.program_hosting_folder = Path(__file__).parent.resolve()
+        self.program_hosting_folder = Path(__file__).parent.resolve()
 
     def get_credentials(self):
         self.username = input('SSH username: ')
         self.password = getpass.getpass(prompt='SSH password: ')
 
     def load_snippet(self):
-        _snippet_full_path = 'snippet.txt'
-        # self.program_hosting_folder / 'data/snippet.txt'
+        _snippet_full_path = self.program_hosting_folder / 'load_data/snippet.txt'
         with open(file=_snippet_full_path, mode='r', encoding='utf8') as file_content:
             for line in file_content:
                 if line.endswith('\n'):
@@ -80,8 +99,7 @@ class DeviceController:
                     self.snippet.append(line + '\n')
 
     def load_devices(self):
-        _devices_full_path = 'devices.txt'
-        # self.program_hosting_folder / 'data/devices.txt'
+        _devices_full_path = self.program_hosting_folder / 'load_data/devices.txt'
         with open(file=_devices_full_path, mode='r', encoding='utf8') as file_content:
             for line in file_content:
                 line = line.splitlines()[0]
