@@ -90,7 +90,7 @@ class DeviceController:
         self.password = getpass.getpass(prompt='SSH password: ')
 
     def load_snippet(self):
-        _snippet_full_path = self.program_hosting_folder / 'load_data/snippet.txt'
+        _snippet_full_path = self.program_hosting_folder / 'snippet.txt'
         with open(file=_snippet_full_path, mode='r', encoding='utf8') as file_content:
             for line in file_content:
                 if line.endswith('\n'):
@@ -99,7 +99,7 @@ class DeviceController:
                     self.snippet.append(line + '\n')
 
     def load_devices(self):
-        _devices_full_path = self.program_hosting_folder / 'load_data/devices.txt'
+        _devices_full_path = self.program_hosting_folder / 'devices.txt'
         with open(file=_devices_full_path, mode='r', encoding='utf8') as file_content:
             for line in file_content:
                 line = line.splitlines()[0]
