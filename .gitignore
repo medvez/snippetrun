@@ -1,5 +1,5 @@
 /venv/
 
-devices.txt
+devices*
 snippet.txt
 *.log

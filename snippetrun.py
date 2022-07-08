@@ -1,11 +1,12 @@
 import getpass
 import logging.config
+import os.path
 import paramiko
 import time
-from pathlib import Path
 from threading import Thread
 
 
+BASE_DIR = os.path.dirname(os.path.realpath(__file__))
 log_config = {
     'version': 1,
     'formatters': {
@@ -14,35 +15,43 @@ log_config = {
         },
     },
     'handlers': {
-        'main_full_to_file': {
+        'full_to_file': {
             'class': 'logging.FileHandler',
             'formatter': 'full',
-            'filename': 'snippetrun.log',
+            'filename': os.path.join(BASE_DIR, 'snippetrun_log.log'),
             'encoding': 'utf-8',
         },
     },
     'loggers': {
-        'main': {
-            'handlers': ['main_full_to_file'],
+        'snippetrun': {
+            'handlers': ['full_to_file'],
             'level': 'DEBUG',
         },
     },
 }
 
 logging.config.dictConfig(log_config)
-logger = logging.getLogger('main')
+logger = logging.getLogger('snippetrun')
 
 
 def time_tracker(function):
-    def intermediate(*args, **kwargs):
+    def wrapper(*args, **kwargs):
         start_time = time.time()
         result = function(*args, **kwargs)
         end_time = time.time()
         run_time = end_time - start_time
         print(f'Run time: {round(run_time, 1)} s')
         return result
+    return wrapper
 
-    return intermediate
+
+def log_handler(message, device_ip=None):
+    if device_ip is not None:
+        logger.error(f"{device_ip}:{message}", exc_info=False)
+        print(f"error on {device_ip} - see log!")
+    else:
+        logger.error(message, exc_info=False)
+        print(message)
 
 
 class SnippetRun(Thread):
@@ -54,24 +63,24 @@ class SnippetRun(Thread):
         self.snippet = snippet
 
     def ssh_operation(self):
-        ssh_client = paramiko.client.SSHClient()
-        ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        _ssh_client = paramiko.client.SSHClient()
+        _ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         try:
-            ssh_client.connect(hostname=self.device_ip,
-                               username=self.ssh_user,
-                               password=self.ssh_password,
-                               allow_agent=False)
-        except Exception:
-            logger.exception(f'Can not connect to {self.device_ip}')
+            _ssh_client.connect(hostname=self.device_ip,
+                                username=self.ssh_user,
+                                password=self.ssh_password,
+                                allow_agent=False)
+        except paramiko.ssh_exception.AuthenticationException:
+            log_handler(message=f'wrong credentials', device_ip=self.device_ip)
+        except TimeoutError:
+            log_handler(message=f'device is not responding', device_ip=self.device_ip)
         else:
             print(f'Connected to {self.device_ip}')
-            logger.info(f'Connected to {self.device_ip}')
-            ssh_session = ssh_client.invoke_shell()
-            for command in self.snippet:
-                ssh_session.send(command)
+            with _ssh_client.invoke_shell() as shell_session:
+                for command in self.snippet:
+                    shell_session.send(command)
+                    time.sleep(1)
                 time.sleep(1)
-            time.sleep(1)
-            ssh_client.close()
 
     def run(self):
         self.ssh_operation()
@@ -83,15 +92,15 @@ class DeviceController:
         self.password = ''
         self.snippet = []
         self.devices = []
-        self.program_hosting_folder = Path(__file__).parent.resolve()
 
     def get_credentials(self):
         self.username = input('SSH username: ')
         self.password = getpass.getpass(prompt='SSH password: ')
 
     def load_snippet(self):
-        _snippet_full_path = self.program_hosting_folder / 'snippet.txt'
-        with open(file=_snippet_full_path, mode='r', encoding='utf8') as file_content:
+        with open(file=os.path.join(BASE_DIR, 'snippet.txt'),
+                  mode='r',
+                  encoding='utf8') as file_content:
             for line in file_content:
                 if line.endswith('\n'):
                     self.snippet.append(line)
@@ -99,8 +108,9 @@ class DeviceController:
                     self.snippet.append(line + '\n')
 
     def load_devices(self):
-        _devices_full_path = self.program_hosting_folder / 'devices.txt'
-        with open(file=_devices_full_path, mode='r', encoding='utf8') as file_content:
+        with open(file=os.path.join(BASE_DIR, 'devices.txt'),
+                  mode='r',
+                  encoding='utf8') as file_content:
             for line in file_content:
                 line = line.splitlines()[0]
                 if line:
@@ -124,9 +134,10 @@ class DeviceController:
         try:
             self.load_snippet()
             self.load_devices()
-        except Exception:
-            print('Error! See log!')
-            logger.exception(f'Loading data error')
+        except FileNotFoundError:
+            log_handler(message="can't find txt file")
+        except UnicodeDecodeError:
+            log_handler(message="txt file is encrypted")
         else:
             self.configure_devices()
 
