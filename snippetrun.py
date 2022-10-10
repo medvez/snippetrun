@@ -35,6 +35,9 @@ logger = logging.getLogger('snippetrun')
 
 
 def time_tracker(function):
+    """
+    Just decorator to track time function running
+    """
     def wrapper(*args, **kwargs):
         start_time = time.time()
         result = function(*args, **kwargs)
@@ -46,6 +49,9 @@ def time_tracker(function):
 
 
 def log_handler(message, device_ip=None):
+    """
+    Control logging behavior
+    """
     if device_ip is not None:
         logger.error(f"{device_ip}:{message}", exc_info=False)
         print(f"error on {device_ip} - see log!")
@@ -55,14 +61,17 @@ def log_handler(message, device_ip=None):
 
 
 class SnippetRun(Thread):
-    def __init__(self, ssh_user, ssh_password, device_ip, snippet, *args, **kwargs):
+    """
+    Run all commands on single device.
+    """
+    def __init__(self, ssh_user: str, ssh_password: str, device_ip: str, snippet: list, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.ssh_user = ssh_user
         self.ssh_password = ssh_password
         self.device_ip = device_ip
         self.snippet = snippet
 
-    def ssh_operation(self):
+    def ssh_operation(self) -> None:
         _ssh_client = paramiko.client.SSHClient()
         _ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         try:
@@ -82,22 +91,27 @@ class SnippetRun(Thread):
                     time.sleep(1)
                 time.sleep(1)
 
-    def run(self):
+    def run(self) -> None:
         self.ssh_operation()
 
 
 class DeviceController:
-    def __init__(self):
+    """
+    Main class, which combines all operations on all devices.
+    It gets credentials from CLI, makes list of devices from file, list of configuration commands from file
+    and runs commands on every device in multithreading mode.
+    """
+    def __init__(self) -> None:
         self.username = ''
         self.password = ''
         self.snippet = []
         self.devices = []
 
-    def get_credentials(self):
+    def get_credentials(self) -> None:
         self.username = input('SSH username: ')
         self.password = getpass.getpass(prompt='SSH password: ')
 
-    def load_snippet(self):
+    def load_snippet(self) -> None:
         with open(file=os.path.join(BASE_DIR, 'snippet.txt'),
                   mode='r',
                   encoding='utf8') as file_content:
@@ -107,7 +121,7 @@ class DeviceController:
                 elif line:
                     self.snippet.append(line + '\n')
 
-    def load_devices(self):
+    def load_devices(self) -> None:
         with open(file=os.path.join(BASE_DIR, 'devices.txt'),
                   mode='r',
                   encoding='utf8') as file_content:
@@ -117,7 +131,7 @@ class DeviceController:
                     self.devices.append(line)
 
     @time_tracker
-    def configure_devices(self):
+    def configure_devices(self) -> None:
         _runners = []
         for device_ip in self.devices:
             snippet_runner = SnippetRun(ssh_user=self.username,
@@ -129,7 +143,7 @@ class DeviceController:
         for runner in _runners:
             runner.join()
 
-    def run(self):
+    def run(self) -> None:
         self.get_credentials()
         try:
             self.load_snippet()
