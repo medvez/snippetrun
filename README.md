@@ -5,4 +5,7 @@ Just make sure, current folder with script contains actual data files for your n
 * **snippet.txt**, where commands are listed, each on new line
 * **devices.txt** containing list of devices' ip addresses, each on new line.
 
+Before using script, install requirements:  
+*pip install -r requirements.txt*  
+<br>
 Run the script, provide ssh login and password.
